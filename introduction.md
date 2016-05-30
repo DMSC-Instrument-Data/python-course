@@ -527,6 +527,6 @@ Here we use another method of the dictionary, called `update` which essentially 
     In Estonia, the square root of 2 is 1.500.
     In Australia, the square root of 2 is 1.414
     
-In the next section we will look at how we can improve the script by 
+As an excersize, make the script correct so that accepts country names case insensitive. The output should be correctly written with a capital letter first. Refer to the documentation of [str](https://docs.python.org/3/library/stdtypes.html#text-sequence-type-str) and go through the methods.
 
 ## 
