@@ -529,4 +529,157 @@ Here we use another method of the dictionary, called `update` which essentially 
     
 As an excersize, make the script correct so that accepts country names case insensitive. The output should be correctly written with a capital letter first. Refer to the documentation of [str](https://docs.python.org/3/library/stdtypes.html#text-sequence-type-str) and go through the methods.
 
-## 
+## Reading and writing files
+
+In the last sections we have looked at some basic data types and principles of the Python language. Since we ultimately want to use Python for processing scientific data, we will now write a more useful script that reads some data, transforms it and writes a modified file. Furthermore, we will calculate and output some statistics about the data.
+
+The file we want to load is called `poldi_2013_si.dat` and contains a correlation spectrum calculated from a powder diffraction measurement at the POLDI beamline at SINQ. Later on we will also plot the data, but for now we just want to look at it. Open the file in your text editor. It's CSV-data with a header that has a `#`-character to indicate a comment:
+
+    #X , Y0 , E0
+    1.54973 163.685 0
+    1.54996 136.049 0
+    1.55019 235.999 0
+    1.55043 106.544 0
+    1.55066 34.1962 0
+    1.55089 126.983 0
+    
+The file contains three columns (x, y and error). X is Q in reciprocal Angström, Y is correlation counts. Our script should read the file, ignore the comment line and produce three lists of floating point numbers containing the respective data. You've probably noticed that the error-column is zero, so we want to calculate error estimates. The new data we're writing out into a different file are x, y (unmodified) and the calculated errors. The output file should have the same number of significant places.
+
+Let's start by setting up the argument parser to deal with the input and output requirements. Put the script into a file called `data_convert_unmodified.py`:
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Read a file with 3 space separated columns, calculate an error estimate from the second column and write the modified file.')
+    
+    parser.add_argument('input', help='Name of the input file.')
+    parser.add_argument('output', help='Name of the output file.')
+    
+    arguments = parser.parse_args()
+    
+Test that the script does the right thing (run it with the `-h`-flag, try specifying only one argument or three arguments). As a first step we will read the file into x-, y-, and error lists and write those out unmodified into the new file. For reading a file, the file has to be opened using the `open`-function. It accepts the file name and a so called mode as arguments. The most commonly used modes are `r` for "read-only", `w` for "write-only" or `r+` for reading and writing.
+
+    x_data = []
+    y_data = []
+    e_data = []
+
+    infile = open(arguments.input, 'r')
+
+    # Go through the file line by line
+    for line in infile:
+        # Remove whitespace characters at the beginning and end
+        stripped_line = line.strip()
+        
+        # If it's not a comment and not an empty line, try to convert it to three floats.
+        if not stripped_line.startswith('#') and not len(stripped_line) == 0:
+            x, y, e = [float(x) for x in line.split(' ')]
+            
+            x_data.append(x)
+            y_data.append(y)
+            e_data.append(e)
+        
+    infile.close()
+
+    # This is the format we want to use for the output
+    lineformat = '{:.6g} {:.6g} {:.6g}\n'
+
+    # Open the output file, overwrite existing file
+    outfile = open(arguments.output, 'w')
+
+    # Use zip to iterate over the three arrays simultaneously.
+    for x, y, e in zip(x_data, y_data, e_data):
+        outfile.write(lineformat.format(x, y, e))
+        
+    outfile.close()
+                        
+The behavior of the open file is similar to a list that can be iterated over line by line. Try the script and check that it works correctly. Now we can look at the second requirement and calculate the error estimates from y. Maybe you noticed that there are negative y-values, which would pose a problem for the square root function. So instead of calculating the error from y, we calculate it from the absolute value of y. We can use the `abs`-function which is available by default, so we just need to add `from math import sqrt` at the top of the script (save it as `data_convert_sqrt_errors.py`) and calculate the error:
+
+    infile.close()
+    
+    # A list comprehension to calculate the error from y_data
+    e_data = [sqrt(abs(y)) for y in y_data]
+
+    # This is the format we want to use for the output
+    lineformat = '{:.6g} {:.6g} {:.6g}\n'
+
+The rest of the script stays exactly the same. Run the script and check that the calculated errors are reasonable at a few points. So far the script is very silent, we want to offer the user an option to calculate and print some statistics:
+
+- Number of data points
+- x-range
+- Minimum and maximum value for y
+- Mean and median for y
+- Mean I/sigma
+
+First, let's save the file script as a new file called `data_convert_statistics.py` so we can work on the statistics part. We'll modify the argument parser a bit to add an optional flag to the script that outputs the statistics. Probably we should also make writing the file optional in case we just need some statistics. While we're at it, we can also make calculating the errors optional:
+
+    parser.add_argument('input', help='Name of the input file.')
+    parser.add_argument('output', nargs='?', default=None,
+                        help='Name of the output file.')
+    parser.add_argument('-s', '--square-root-errors', action='store_true', default=False,
+                        help='Calculate errors as sqrt(|y|), otherwise leave errors unmodified.')               
+    parser.add_argument('-p', '--print-statistics', action='store_true', default=False,
+                        help='Calculate and print some statistics from the data.')
+
+    arguments = parser.parse_args()
+    
+With these modified options, calculation of errors is optional, so is storing the data in a new file. We need to modify the logic a bit so that the options are processed correctly:
+
+    if arguments.square_root_errors:
+        e_data = [sqrt(abs(y)) for y in y_data]
+
+    if arguments.output is not None:
+        lineformat = '{:.6g} {:.6g} {:.6g}\n'
+
+        outfile = open(arguments.output, 'w')
+
+        for x, y, e in zip(x_data, y_data, e_data):
+            outfile.write(lineformat.format(x, y, e))
+            
+        outfile.close()
+
+Lastly, we need to add the statistics computations and print them if the option has been specified:
+
+    if arguments.print_statistics:
+        print('Statistics for file {}:'.format(arguments.input))
+        
+        number_of_points = len(x_data)
+        print('Number of data points: {}'.format(number_of_points))
+        
+        print('x-range: {:.6g} - {:.6g}'.format(min(x_data), max(x_data)))
+        print('y-range: {:.6g} - {:.6g}'.format(min(y_data), max(y_data)))
+        
+        mean_y = sum(y_data) / number_of_points    
+        print('Mean y: {:.6g}'.format(mean_y))
+        
+        median_y = sorted(y_data)[int(number_of_points/2)]
+        print('Median y: {:.6g}'.format(median_y))
+        
+        # If there is a 0.0 in the errors, don't perform the calculation and print Inf instead.
+        if not 0.0 in e_data:
+            mean_i_over_sigma = sum([abs(y) / e for y, e in zip(y_data, e_data)]) / number_of_points
+            print('Mean I/sigma: {:.6g}'.format(mean_i_over_sigma))
+        else:
+            print('Mean I/sigma: Inf')
+
+            
+Now the script can be used in quite a few different ways. For example to calculate the statistics from the input file with errors calculated as `sqrt(|y|)`:
+
+    $> python data_convert_statistics.py -p -s poldi_2013_si.dat
+    Statistics for file poldi_2013_si.dat:
+    Number of data points: 5531
+    x-range: 1.54973 - 8.95682
+    y-range: -283.502 - 3263.52
+    Mean y: 138.63
+    Median y: 126.048
+    Mean I/sigma: 11.2182
+    
+Or to silently calculate those errors and write the data to a different file:
+    
+    $> python data_convert_statistics.py -s poldi_2013_si.dat poldi_2013_si_errors.dat
+    $>
+    
+Now that we have a data file with error estimates, we can proceed to the next section, where we'll look into plotting the data.
+
+## Numpy: Reading data into arrays
+
+
+    
