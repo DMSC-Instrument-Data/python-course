@@ -679,7 +679,136 @@ Or to silently calculate those errors and write the data to a different file:
     
 Now that we have a data file with error estimates, we can proceed to the next section, where we'll look into plotting the data.
 
-## Numpy: Reading data into arrays
+## Numpy, scipy, matplotlib
 
+So far we've used plain Python and the standard library, but there are some modules that make our lives much easier. Scipy is part of a stack of libraries that play together very well. Possibly the most important one is [numpy](http://www.numpy.org/). It introduces arrays to hold data (similar to what some of the mathematics packages offer) and defines lots of functions for numerical computations.
 
+Let's see whether we can load the data we produced with our conversion script in a Python prompt.
+
+    >>> import numpy as np
+    >>> x, y, e = numpy.loadtxt('poldi_2013_si_errors.dat', unpack=True)
+    >>> x
+    array([ 1.54973,  1.54996,  1.55019, ...,  8.94137,  8.94909,  8.95682])
     
+That is a lot easier than looping through the file, checking for comments and empty lines. Now we don't have a list though, but a numpy-array. It still behaves like a list in many aspects, at least when it's a 1D-array like in this case. We can for example still get slices out of it and access single elements:
+
+    >>> x[2:10]
+    array([ 1.55019,  1.55043,  1.55066,  1.55089,  1.55112,  1.55135,
+            1.55159,  1.55182])
+    >>> x[-1]
+    8.9568200000000004
+
+Maybe before going to the plotting we should take another look at our last script and make some modifications to use numpy functions were possible. Save the file as `data_convert_numpy.py` and make the following modifications:
+
+    import argparse
+    import numpy as np
+    
+    # The parser definition does not change ...
+
+    # The unpack argument extracts the three columns into separate arrays like we had before
+    x_data, y_data, e_data = np.loadtxt(arguments.input, unpack=True)
+
+    if arguments.square_root_errors:
+        e_data = np.sqrt(np.abs(y_data))
+
+    if arguments.output is not None:
+        # For saving we need to create an array 
+        np.savetxt(arguments.output, np.array([x_data, y_data, e_data]).T, fmt='%.6g')
+
+    if arguments.print_statistics:
+        print('Statistics for file {}:'.format(arguments.input))
+        
+        number_of_points = len(x_data)
+        print('Number of data points: {}'.format(number_of_points))
+        
+        print('x-range: {:.6g} - {:.6g}'.format(min(x_data), max(x_data)))
+        print('y-range: {:.6g} - {:.6g}'.format(min(y_data), max(y_data)))
+        
+        mean_y = np.mean(y_data)
+        print('Mean y: {:.6g}'.format(mean_y))
+        
+        median_y = np.median(y_data)
+        print('Median y: {:.6g}'.format(median_y))
+        
+        if not 0.0 in e_data:
+            mean_i_over_sigma = np.mean(np.abs(y_data) / e_data)
+            print('Mean I/sigma: {:.6g}'.format(mean_i_over_sigma))
+        else:
+            print('Mean I/sigma: Inf')
+
+That shortens it quite a bit. One nice thing about numpy arrays is that you can do arithmetic operations with them with no effort. For example the error calculation - the numpy sqrt- and abs-functions know that they can iterate over the argument they get and perform the operation on all elements of the sequence, yielding a new sequence. How convenient! Or the mean I/sigma calculation, where the element wise division is simply done by writing the `/`-operator. Also, numpy already implements mean, median and so on, so this does not need to be re-implemented manually again.
+
+But anyway, we wanted to write a small script to plot the data, so let's get back to that. A very popular package for plotting in Python is [matplotlib](http://matplotlib.org/users/pyplot_tutorial.html). We'll setup a small script first to load and plot the data, called `plot_diffractogram.py`:
+
+    import argparse
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    parser = argparse.ArgumentParser(description='Plot the supplied file.')
+    
+    parser.add_argument('input', help='Name of the input file.')
+    
+    arguments = parser.parse_args()
+    
+    x,y,e = np.loadtxt(arguments.input, unpack=True)
+    
+    plt.errorbars(x,y,e)
+    plt.show()
+    
+That should produce a diffractogram with some very nice and sharp Bragg-peaks and some background noise. You can try and zoom in a bit on the different peaks. As the file name indicates, this data produced from a silicon measurement. Silicon has a cubic crystal structure and thus one lattice parameter `a=5.43119`. We could use that information to improve our script to make it plot a small region in Q with the Bragg peak at the center by giving the script the lattice parameter and an index HKL to specify which reflection to plot.
+
+To calculate Q from HKL and lattice parameters, we use the following equation:
+
+    Q = 2*pi*sqrt(h'.G*.h)
+    
+Here, G* is a 3x3-matrix describing the reciprocal lattice of the crystal and for cubic cases it's very easy to construct from the lattice parameter a. h' denotes hkl as a row-vector and the . is the dot-product. Expressed as a function that's:
+
+    def get_q(hkl, g_star):
+        return 2 * np.pi * np.sqrt(hkl.T.dot(g_star.dot(h)))
+        
+Numpy has a lot to offer with respect to linear algebra. There's a sub-module called `linalg` which has most things you would expect such as matrix inversion and so on. To calculate G* for the cubic case we write a function like this:
+
+    def get_g_star(a):
+        return np.eye(3) * 1/a**2
+        
+Then we add two options to the new script (`plot_hkl_cubic.py`) to let the user specify HKL and a:
+
+    parser.add_argument('-a', help='Lattice parameter of a cubic crystal structure in Angström.', type=float)
+    parser.add_argument('-m', help='Miller indices HKL given in the format h,k,l.')
+    
+The plotting part now looks like this:
+
+    plt.errorbar(x,y,e,fmt='.')
+    plt.xlabel('Q')
+    plt.ylabel('I')
+
+    if arguments.a is not None and arguments.b is not None:
+        hkl = np.array([float(x) for x in arguments.b.split(',')])
+        
+        g_star = get_g_star(arguments.a)
+        q = get_q(hkl, g_star)
+        
+        xlimits = (q-0.05, q+0.05)
+        
+        plt.title('HKL = ' + arguments.b)
+        plt.xlim(xlimits)
+
+    plt.show()
+    
+Now we can invoke the script to plot the 220-reflection:
+
+    $> python plot_hkl_cubic.py -a 5.43119 -b 2,2,0 poldi_2013_si_errors.dat
+    
+The matplotlib libraries has tons of options and different plot types, too much to cover in this introduction. One convenient feature we may want to add to the script is the possibility to save the plot to a file instead of showing a window.
+
+We'll add a second positional argument that, if specified, let's the script write the plot to a file instead:
+
+    parser.add_argument('output', nargs='?', default=None,
+                        help='If supplied, write plot to this file instead of displaying')
+    
+Saving the figure is then very easy:
+
+    if arguments.output is not None:
+        plt.savefig(arguments.output)
+    else:
+        plt.show()
