@@ -818,14 +818,14 @@ Now we can optionally save the figure to a file. Matplotlib automatically recogn
     $> python plot_hkl_cubic.py -a 5.43119 -m 3,1,1 poldi_2013_si_errors.dat poldi_2013_si_311.png
     $> python plot_hkl_cubic.py -a 5.43119 -m 3,1,1 poldi_2013_si_errors.dat poldi_2013_si_311.pdf
     
-If you've opened some of the plotted files you may have noticed the Gaussian shape of the peaks. In the next step we want to extract the integrated area under the peak as well as the exact position. So we need to fit a Gaussian function to the peak:
+If you've opened some of the plotted files you may have noticed the Gaussian shape of the peaks. In the next step we want to extract the integrated area under the peak as well as the exact position. So we need to fit a Gaussian function to the peak. We'll fit the Gaussian via the height and integrate the curve later:
 
-    y(x) = sqrt(A/(2*pi*sigma) * exp(-1/2 * (x - x0)^2/sigma^2)
+    y(x) = h * exp(-1/2 * (x - x0)^2/sigma^2)
     
 Writing this in Python is fairly straightforward. In fact, we can write it down almost exactly like that:
 
-    def gauss(x, x0, s, a):
-        return np.sqrt(a/(2 * np.pi * s) * np.exp(-0.5 * ((x-x0)/sigma)**2)
+    def gauss(x, x0, s, h):
+        return h * np.exp(-0.5 * ((x-x0)/sigma)**2)
         
 Probably you also noticed that all the peaks are surrounded by a quadratic background with a constant offset, so to get the area right, we have to express the background like this:
 
@@ -834,9 +834,96 @@ Probably you also noticed that all the peaks are surrounded by a quadratic backg
         
 The `x0`-parameter of this and the Gaussian are the same. For the entire peak we end up with a function with 5 parameters:
 
-    def peak(x, x0, s, a, b, n):
-        return gauss(x, x0, s, a) + background(x, x0, b, n)
+    def peak(x, x0, s, h, b, n):
+        return gauss(x, x0, s, h) + background(x, x0, b, n)
         
-All we need to do now is to somehow feed this to the scipy fitting engine (there are many other packages that can be used for fitting, such as lmfit).
+All we need to do now is to somehow feed this to the scipy fitting engine (there are many other packages that can be used for fitting, such as lmfit). The scipy [reference](http://docs.scipy.org/doc/scipy-0.17.0/reference/index.html) is a great help. We need to look into the module `scipy.optimize`, which has a function called [curve_fit](http://docs.scipy.org/doc/scipy-0.17.0/reference/generated/scipy.optimize.curve_fit.html#scipy.optimize.curve_fit) that is a convenient interface to a least squares fitting routine.
 
+First we need to "cut" the x, y and e data out of the total spectrum for the fit, because we only fit a single peak. For this, numpy offers something called boolean indexing.
 
+    # Cut out the relevant part of the data (numpy advanced indexing)
+    fit_data_indices = (x >= xlimits[0]) & (x <= xlimits[1])
+    
+    x_fit = x[fit_data_indices]
+    y_fit = y[fit_data_indices]
+    e_fit = e[fit_data_indices]
+    
+The first expression gives all indices for which the logic statements are true, which is all the x-values within the xlimits we determined from Q before. Then three new arrays are created from the total data using these indices.
+
+Instead of doing the fitting right there, we create a new function that actually calls the appropriate function for us and returns the optimized parameters:
+
+    def fit_peak(x, y, e, q):
+        # We need starting parameters in the same order as the peak function
+        start_parameters = [q, 0.001, np.max(y_fit), 0, np.min(y_fit)]
+        
+        # Get the optimized parameters and the covariance matrix, supply relative errors.
+        optimized_parameters, covariance_matrix = scipy.optimize.curve_fit(peak, x_fit, y_fit, p0=start_parameters,
+                                                                           sigma=e_fit/y_fit)
+        
+        # Calculate sigmas for the optimized parameters
+        parameter_errors = np.sqrt(np.diag(covariance_matrix))
+        
+        return optimized_parameters, parameter_errors
+    
+
+As start parameters we use the calculated Q-value, for sigma something like 0.001, the exact value is not massively important but if it's too far away there may be problems. For the hight we just estimate that the maximum in the y-data is the top of the peak, that is a good guess for the data we have. We don't know anything about the quadratic background coefficient except that it might be positive, but 0 is as good as any other first guess, so we'll use that. Our guess for the offset is the minimum y-value. Since by default curve_fit assumes relative errors, we transform our absolute sigmas to relative errors.
+
+Then we call the function and get back parameters as well as sigmas for the parameters:
+    
+    parameters, errors = fit_peak(x_fit, y_fit, e_fit, q)
+
+First we can do some printing of the fitted parameters in another function which also displays the parameter name along with the value, absolute and relative error:
+
+    def print_parameters(parameters, errors, parameter_names):
+        print('Fitted parameters:')
+        for name, value, error in zip(parameter_names, parameters, errors):
+            print('    {}: {:.6g} +/- {:.6g} ({:.2g} %)'.format(name, value, error, abs(error/value) * 100))
+            
+The function is called like this:
+
+    print_parameters(parameters, errors,
+                    ['Q(hkl)', 'Sigma', 'Height', 'Quadratic background', 'Offset'])
+                    
+Lastly, let's have a look at the integration. There is a scipy module calles `scipy.integrate` which offers the function `quad` as a general purpose numerical integration routine. It expects a function to integrate and x-range and potential additional parameters to the integrated function:
+
+    def get_integrated_intensity(peak_function, parameters):
+        q, sigma = parameters[:2]
+        
+        # Integrate in the 4-sigma range.
+        return scipy.integrate.quad(gauss, q - 4*sigma, q + 4*sigma, args=tuple(parameters[:3]))[0]
+        
+Because the `arg`-argument that is passed to the `gauss`-function, we need to convert the parameters of the gaussian (the first 3 parameters in the list, hence `parameters[:3]`) into a tuple. The `quad`-function itself returns a tuple (result and estimated error), but we only want the first part of the tuple which is the integrated intensity. In our main program we call the function and print the intensity:
+
+    integrated_intensity = get_integrated_intensity(peak, parameters)
+    print('Integrated intensity for {}: {:.4g}'.format(arguments.m, integrated_intensity))
+
+Now we have a useful program that can fit and integrate single Bragg peaks in powder patterns from cubic substances. 
+
+    $> ython3 plot_and_fit_cubic.py -a 5.43119 -m 2,2,0 poldi_2013_si_errors.dat
+    Fitted parameters:
+        Q(hkl): 3.27216 +/- 1.84739e-05 (0.00056 %)
+        Sigma: 0.00333607 +/- 2.79873e-05 (0.84 %)
+        Height: 3006.89 +/- 18.7954 (0.63 %)
+        Quadratic background: 91886.6 +/- 6082.29 (6.6 %)
+        Offset: -167.607 +/- 15.6933 (9.4 %)
+    Integrated intensity for 2,2,0: 25.14
+    
+## Tips and tricks
+
+### Python does not find a package
+
+If a module is not installed, there are multiple ways to install it. On Linux based systems, many of these packages are in the standard package manager and can be installed through the usual tools. For example on Ubuntu:
+
+    sudo apt-get install python3-numpy python3-matplotlib python3-scipy
+    
+If the versions there are too old or packages are not available, Python also ships its own package distribution tool called `pip` ([Python Package Index](https://pypi.python.org/pypi). With this you can install many packages as well:
+
+    pip install numpy scipy matplotlib
+    
+Sometimes you don't have the proper permissions to write to system directories so you may need to pass an additional flag:
+
+    pip install --user numpy scipy matplotlib
+    
+### Finding solutions to problems
+
+This is maybe not even closely related to Python, but any programming problem in general. A very good Q&A site for software development problems of all kinds is [stackoverflow](http://stackoverflow.com/). Use the search function there and add tags such as `[python]` or more specific ones as `[numpy]` and you will find very good solutions to many problems you encounter.
