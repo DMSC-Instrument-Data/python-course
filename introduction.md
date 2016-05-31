@@ -782,22 +782,22 @@ The plotting part now looks like this:
     plt.xlabel('Q')
     plt.ylabel('I')
 
-    if arguments.a is not None and arguments.b is not None:
-        hkl = np.array([float(x) for x in arguments.b.split(',')])
+    if arguments.a is not None and arguments.m is not None:
+        hkl = np.array([float(x) for x in arguments.m.split(',')])
         
         g_star = get_g_star(arguments.a)
         q = get_q(hkl, g_star)
         
         xlimits = (q-0.05, q+0.05)
         
-        plt.title('HKL = ' + arguments.b)
+        plt.title('HKL = ' + arguments.m)
         plt.xlim(xlimits)
 
     plt.show()
     
 Now we can invoke the script to plot the 220-reflection:
 
-    $> python plot_hkl_cubic.py -a 5.43119 -b 2,2,0 poldi_2013_si_errors.dat
+    $> python plot_hkl_cubic.py -a 5.43119 -m 2,2,0 poldi_2013_si_errors.dat
     
 The matplotlib libraries has tons of options and different plot types, too much to cover in this introduction. One convenient feature we may want to add to the script is the possibility to save the plot to a file instead of showing a window.
 
@@ -812,3 +812,31 @@ Saving the figure is then very easy:
         plt.savefig(arguments.output)
     else:
         plt.show()
+
+Now we can optionally save the figure to a file. Matplotlib automatically recognizes the file extension so that we can save the plot in different formats easily.
+
+    $> python plot_hkl_cubic.py -a 5.43119 -m 3,1,1 poldi_2013_si_errors.dat poldi_2013_si_311.png
+    $> python plot_hkl_cubic.py -a 5.43119 -m 3,1,1 poldi_2013_si_errors.dat poldi_2013_si_311.pdf
+    
+If you've opened some of the plotted files you may have noticed the Gaussian shape of the peaks. In the next step we want to extract the integrated area under the peak as well as the exact position. So we need to fit a Gaussian function to the peak:
+
+    y(x) = sqrt(A/(2*pi*sigma) * exp(-1/2 * (x - x0)^2/sigma^2)
+    
+Writing this in Python is fairly straightforward. In fact, we can write it down almost exactly like that:
+
+    def gauss(x, x0, s, a):
+        return np.sqrt(a/(2 * np.pi * s) * np.exp(-0.5 * ((x-x0)/sigma)**2)
+        
+Probably you also noticed that all the peaks are surrounded by a quadratic background with a constant offset, so to get the area right, we have to express the background like this:
+
+    def background(x, x0, b, n):
+        return b*(x-x0)**2 + n
+        
+The `x0`-parameter of this and the Gaussian are the same. For the entire peak we end up with a function with 5 parameters:
+
+    def peak(x, x0, s, a, b, n):
+        return gauss(x, x0, s, a) + background(x, x0, b, n)
+        
+All we need to do now is to somehow feed this to the scipy fitting engine (there are many other packages that can be used for fitting, such as lmfit).
+
+
