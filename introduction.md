@@ -899,7 +899,7 @@ Because the `arg`-argument that is passed to the `gauss`-function, we need to co
 
 Now we have a useful program that can fit and integrate single Bragg peaks in powder patterns from cubic substances. 
 
-    $> ython3 plot_and_fit_cubic.py -a 5.43119 -m 2,2,0 poldi_2013_si_errors.dat
+    $> python plot_and_fit_cubic.py -a 5.43119 -m 2,2,0 poldi_2013_si_errors.dat
     Fitted parameters:
         Q(hkl): 3.27216 +/- 1.84739e-05 (0.00056 %)
         Sigma: 0.00333607 +/- 2.79873e-05 (0.84 %)
