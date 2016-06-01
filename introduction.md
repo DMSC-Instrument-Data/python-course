@@ -56,7 +56,7 @@ The `type`-function is very useful. It tells you what kind of data you are deali
     >>> type(2 < 5)
     <class 'bool'>
 
-We're going to get to know other fundamental types later and even create our own types. So far we have used Python just for very simple arithmetic and boolean expressions. Let's try to perform some more advances math, say we would like to know the square root of 4:
+We're going to get to know other fundamental types later. So far we have used Python just for very simple arithmetic and boolean expressions. Let's try to perform some more advances math, say we would like to know the square root of 4:
 
     >>> sqrt(4)
     Traceback (most recent call last):
