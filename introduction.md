@@ -753,7 +753,7 @@ But anyway, we wanted to write a small script to plot the data, so let's get bac
     
     x,y,e = np.loadtxt(arguments.input, unpack=True)
     
-    plt.errorbars(x,y,e)
+    plt.errorbar(x,y,e)
     plt.show()
     
 That should produce a diffractogram with some very nice and sharp Bragg-peaks and some background noise. You can try and zoom in a bit on the different peaks. As the file name indicates, this data produced from a silicon measurement. Silicon has a cubic crystal structure and thus one lattice parameter `a=5.43119`. We could use that information to improve our script to make it plot a small region in Q with the Bragg peak at the center by giving the script the lattice parameter and an index HKL to specify which reflection to plot.
