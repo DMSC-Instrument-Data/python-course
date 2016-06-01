@@ -48,7 +48,7 @@ parser = argparse.ArgumentParser(description='Plot the supplied file.')
 parser.add_argument('input', help='Name of the input file.')
 parser.add_argument('output', nargs='?', default=None,
                     help='If supplied, write plot to this file instead of displaying')
-parser.add_argument('-a', help='Lattice parameter of a cubic crystal structure in Angström.', type=float)
+parser.add_argument('-a', help='Lattice parameter of a cubic crystal structure in Angstrom.', type=float)
 parser.add_argument('-m', help='Miller indices HKL given in the format h,k,l.')
 
 arguments = parser.parse_args()
