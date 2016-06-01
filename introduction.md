@@ -19,7 +19,8 @@ Installation:
 ## Interacting with the Python prompt, variables, modules
 
 Start the Python prompt:
-
+    
+    $> python3
     Python 3.4.3 (default, Oct 14 2015, 20:28:29)
     [GCC 4.8.4] on linux
     Type "help", "copyright", "credits" or "license" for more information.
@@ -56,7 +57,7 @@ The `type`-function is very useful. It tells you what kind of data you are deali
     >>> type(2 < 5)
     <class 'bool'>
 
-We're going to get to know other fundamental types later and even create our own types. So far we have used Python just for very simple arithmetic and boolean expressions. Let's try to perform some more advances math, say we would like to know the square root of 4:
+We're going to get to know other fundamental types later. So far we have used Python just for very simple arithmetic and boolean expressions. Let's try to perform some more advances math, say we would like to know the square root of 4:
 
     >>> sqrt(4)
     Traceback (most recent call last):
@@ -209,7 +210,7 @@ Wow, that is indeed useful! Now people can use our script without opening it and
 
 ## Flow control, lists, maps and functions
 
-An obvious thing we might want to do is checking whether the user has supplied a certain country where special rules regarding square roots apply. Imagine Sweden introduces a law that mandates all square roots of even numbers to be 0. In order to not get in trouble with the authorities, we should change our program to take this into account.
+An obvious thing we might want to do is checking whether the user has supplied a certain country where special rules regarding square roots apply. Imagine Sweden (or any other country, but let's use Sweden, because we are in Sweden right now) introduces a law that mandates all square roots of even numbers to be 0. In order to not get in trouble with the authorities, we should change our program to take this into account.
 
 Save the previously edited file under a new name, `even_sqrts_have_exceptions.py` and make the following changes:
 
@@ -222,7 +223,7 @@ Save the previously edited file under a new name, `even_sqrts_have_exceptions.py
 
     print(sqrt_world.format(arguments.country, c))
     
-In Python, indentation is a syntax element. The code that is indented after the `if`-statement is indented, it the block that is executed when the condition specified in the `if`-statement is true. Test the script:
+In Python, indentation is a syntax element. The code that is indented after the `if`-statement, is the block that is executed when the condition specified in the `if`-statement is true. Test the script:
 
     $> python even_sqrts_have_exceptions.py Sweden
     In Sweden, the square root of 2 is 0.000.
@@ -452,14 +453,14 @@ Tuples are similar to lists, but they are immutable, so you can not change them.
     >>> a
     {'Sweden': 2, 'Denmark': 2}
     
-While this is much more typing than directly defining the dict, there is a very helpful function that can generate a list of tuples from two lists for us, it's called `zip`, because it "zips" the elements of two (or more) lists together like zipper:
+While this is much more typing than directly defining the dict, there is a very helpful function that can generate a list of tuples from two lists for us, it's called `zip`, because it "zips" the elements of two (or more) lists together like a zipper:
 
     >>> a = ['Sweden', 'Denmark']
     >>> b = [2, 5]
     >>> c = dict(zip(a, b))
     {'Sweden': 2, 'Denmark': 5}
     
-Very useful indeed! What's also useful to know is that some objects can't be used as keys in a `dict`, but common types are `str` or `int`. As a value you can store any object you want and, this is a very, very, very important concept, in Python everything is an object. Even the functions we wrote earlier are objects. Yes, that's right. That means we can also store them somewhere to call them later! How useful for our regulation-heavy square root script. This time we create and fill a map which contains a function for each country:
+Very useful indeed! What's also useful to know is that some objects can't be used as keys in a `dict`, but common types that work are `str` or `int`. As a value you can store any object you want and, this is a very, very, very important concept, in Python everything is an object. Even the functions we wrote earlier are objects. Yes, that's right. That means we can also store them somewhere to call them later! How useful for our regulation-heavy square root script. This time we create and fill a map which contains a function for each country:
 
     sqrt_map = {}
 
@@ -527,7 +528,7 @@ Here we use another method of the dictionary, called `update` which essentially 
     In Estonia, the square root of 2 is 1.500.
     In Australia, the square root of 2 is 1.414
     
-As an excersize, make the script correct so that accepts country names case insensitive. The output should be correctly written with a capital letter first. Refer to the documentation of [str](https://docs.python.org/3/library/stdtypes.html#text-sequence-type-str) and go through the methods.
+As an exercise, make the script correct so that accepts country names case insensitive. The output should be correctly written with a capital letter first. Refer to the documentation of [str](https://docs.python.org/3/library/stdtypes.html#text-sequence-type-str) and go through the methods.
 
 ## Reading and writing files
 
@@ -535,15 +536,15 @@ In the last sections we have looked at some basic data types and principles of t
 
 The file we want to load is called `poldi_2013_si.dat` and contains a correlation spectrum calculated from a powder diffraction measurement at the POLDI beamline at SINQ. Later on we will also plot the data, but for now we just want to look at it. Open the file in your text editor. It's CSV-data with a header that has a `#`-character to indicate a comment:
 
-    #X , Y0 , E0
+    # X   Y   E
+    
     1.54973 163.685 0
     1.54996 136.049 0
     1.55019 235.999 0
     1.55043 106.544 0
     1.55066 34.1962 0
-    1.55089 126.983 0
     
-The file contains three columns (x, y and error). X is Q in reciprocal Angström, Y is correlation counts. Our script should read the file, ignore the comment line and produce three lists of floating point numbers containing the respective data. You've probably noticed that the error-column is zero, so we want to calculate error estimates. The new data we're writing out into a different file are x, y (unmodified) and the calculated errors. The output file should have the same number of significant places.
+The file contains three columns (x, y and error). X is Q in reciprocal Angström, Y is correlation counts. Our script should read the file, ignore the comment line and empty line and produce three lists of floating point numbers containing the respective data. You've probably noticed that the error-column is zero, so we want to calculate error estimates. The new data we're writing out into a different file are x, y (unmodified) and the calculated errors. The output file should have the same number of significant places (6).
 
 Let's start by setting up the argument parser to deal with the input and output requirements. Put the script into a file called `data_convert_unmodified.py`:
 
@@ -591,7 +592,7 @@ Test that the script does the right thing (run it with the `-h`-flag, try specif
         
     outfile.close()
                         
-The behavior of the open file is similar to a list that can be iterated over line by line. Try the script and check that it works correctly. Now we can look at the second requirement and calculate the error estimates from y. Maybe you noticed that there are negative y-values, which would pose a problem for the square root function. So instead of calculating the error from y, we calculate it from the absolute value of y. We can use the `abs`-function which is available by default, so we just need to add `from math import sqrt` at the top of the script (save it as `data_convert_sqrt_errors.py`) and calculate the error:
+The behavior of the open file is similar to a list that can be iterated over line by line. Try the script and check that it works correctly. Now we can look at the second requirement and calculate the error estimates from y using the square root (none of those weird ones we wrote earlier). Maybe you noticed that there are negative y-values, which would pose a problem for the square root function. So instead of calculating the error from y, we calculate it from the absolute value of y. We can use the `abs`-function which is available by default, so we just need to add `from math import sqrt` at the top of the script (save it as `data_convert_sqrt_errors.py`) and calculate the error:
 
     infile.close()
     
@@ -752,7 +753,7 @@ But anyway, we wanted to write a small script to plot the data, so let's get bac
     
     x,y,e = np.loadtxt(arguments.input, unpack=True)
     
-    plt.errorbars(x,y,e)
+    plt.errorbar(x,y,e)
     plt.show()
     
 That should produce a diffractogram with some very nice and sharp Bragg-peaks and some background noise. You can try and zoom in a bit on the different peaks. As the file name indicates, this data produced from a silicon measurement. Silicon has a cubic crystal structure and thus one lattice parameter `a=5.43119`. We could use that information to improve our script to make it plot a small region in Q with the Bragg peak at the center by giving the script the lattice parameter and an index HKL to specify which reflection to plot.
