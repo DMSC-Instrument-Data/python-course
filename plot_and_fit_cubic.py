@@ -21,7 +21,7 @@ def peak(x, x0, s, h, b, n):
 
 def fit_peak(x_fit, y_fit, e_fit, q):
     # We need starting parameters in the same order as the peak function
-    start_parameters = [q, 0.001, np.max(y_fit), 0, np.min(y_fit)]
+    start_parameters = [q, 0.001, np.max(y_fit), 0.0, np.min(y_fit)]
     
     # Get the optimized parameters and the covariance matrix, supply relative errors.
     optimized_parameters, covariance_matrix = scipy.optimize.curve_fit(peak, x_fit, y_fit, p0=start_parameters,
@@ -60,7 +60,7 @@ plt.xlabel('Q')
 plt.ylabel('I')
 
 if arguments.a is not None and arguments.m is not None:
-    hkl = np.array([float(x) for x in arguments.m.split(',')])
+    hkl = np.array([float(h) for h in arguments.m.split(',')])
     
     g_star = get_g_star(arguments.a)
     q = get_q(hkl, g_star)
@@ -73,7 +73,7 @@ if arguments.a is not None and arguments.m is not None:
     x_fit = x[fit_data_indices]
     y_fit = y[fit_data_indices]
     e_fit = e[fit_data_indices]
-    
+
     parameters, errors = fit_peak(x_fit, y_fit, e_fit, q)
     
     print_parameters(parameters, errors,
