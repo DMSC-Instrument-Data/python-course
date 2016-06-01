@@ -19,7 +19,8 @@ Installation:
 ## Interacting with the Python prompt, variables, modules
 
 Start the Python prompt:
-
+    
+    $> python3
     Python 3.4.3 (default, Oct 14 2015, 20:28:29)
     [GCC 4.8.4] on linux
     Type "help", "copyright", "credits" or "license" for more information.
