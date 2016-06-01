@@ -19,7 +19,7 @@ def background(x, x0, b, n):
 def peak(x, x0, s, h, b, n):
     return gauss(x, x0, s, h) + background(x, x0, b, n)
 
-def fit_peak(x, y, e, q):
+def fit_peak(x_fit, y_fit, e_fit, q):
     # We need starting parameters in the same order as the peak function
     start_parameters = [q, 0.001, np.max(y_fit), 0, np.min(y_fit)]
     
@@ -41,7 +41,7 @@ def get_integrated_intensity(peak_function, parameters):
     q, sigma = parameters[:2]
     
     # Integrate in the 4-sigma range.
-    return scipy.integrate.quad(gauss, q - 4*sigma, q + 4*sigma, args=tuple(parameters[:3]))[0]
+    return scipy.integrate.quad(peak_function, q - 4*sigma, q + 4*sigma, args=tuple(parameters[:3]))[0]
 
 parser = argparse.ArgumentParser(description='Plot the supplied file.')
 
@@ -79,7 +79,7 @@ if arguments.a is not None and arguments.m is not None:
     print_parameters(parameters, errors,
                      ['Q(hkl)', 'Sigma', 'Height', 'Quadratic background', 'Offset'])
     
-    integrated_intensity = get_integrated_intensity(peak, parameters)
+    integrated_intensity = get_integrated_intensity(gauss, parameters)
     print('Integrated intensity for {}: {:.4g}'.format(arguments.m, integrated_intensity))
     
     # Plot the fitted function
