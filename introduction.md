@@ -572,7 +572,7 @@ Test that the script does the right thing (run it with the `-h`-flag, try specif
         
         # If it's not a comment and not an empty line, try to convert it to three floats.
         if not stripped_line.startswith('#') and not len(stripped_line) == 0:
-            x, y, e = [float(x) for x in line.split(' ')]
+            x, y, e = [float(h) for h in line.split(' ')]
             
             x_data.append(x)
             y_data.append(y)
